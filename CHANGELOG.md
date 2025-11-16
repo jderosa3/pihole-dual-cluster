@@ -1,247 +1,243 @@
-# Pi-hole Fail-Over Cluster Project
+---
 
-## **CHANGELOG**
+# **Pi-hole Fail-Over Cluster — CHANGELOG**
+
+---
+
+# **Version 1.6 — Dual-Stage Reboot/Shutdown, CRT UI, SSH Indicator, Faster Fade-Out**
+
+**Date:** 2025-11-16
+
+## 🔄 Dual-Stage Reboot/Shutdown System
+
+* **Short press:** advance to next screen
+* **3-second hold:** enter **Reboot Circle** animation
+* **Continue holding 5 seconds:** enter **Shutdown Circle**
+* **Release during reboot circle:** inverted CRT reboot countdown
+* **Release during shutdown circle:** CRT-style shutdown confirmation screen
+* **LED1 pulses 3×** before system halt
+* OLED continues displaying safe-to-power-off message after halt
+* Safe sequence: `sync → halt → OLED stays lit`
+
+## 🖵 CRT-Style Shutdown Screen
+
+* Bold, centered, double-drawn text
+* “It’s safe to turn off Pi”
+* White screen with **6-pixel Macintosh-style rounded corners**
+* Screen remains active after CPU halt
+
+## 🔥 Shutdown Circle Improvements
+
+* Added “**Powering Off…**” text
+* Layout matches reboot circle
+* Smooth 5-second circular fill animation
+
+## 🎨 Title Screen Fade-Out
+
+* Replaced ordered dither with **fast randomized single-pixel dissolve**
+* 100% safe for SSD1306 (draw-before-show pipeline)
+* No race conditions or last-frame crashes
+* Smooth 250 ms digital dissolve effect
+
+## 🖥️ SSH Session Indicator
+
+* New **33×9 CRT-style terminal icon**
+* Appears at **top-right corner**
+* Blinks at 0.5 s intervals
+* Uses reliable `who` / `pts/` session detection
+* Zero false positives
+* Fully integrated into Status screen rendering
+
+## 🔌 Network LED Enhancements
+
+* **LED1:** button-only indicator
+* **LED2–LED5:** real-time network activity LEDs
+
+  * eth0 RX (LED2)
+  * eth0 TX (LED3)
+  * wlan0 RX (LED4)
+  * wlan0 TX (LED5)
+* Four threaded monitors (one per direction/interface)
+* Reads `/sys/class/net/.../rx_bytes` and `tx_bytes`
+* Very low CPU overhead (~0.3%)
+* Works even if Wi-Fi missing or interfaces down
+
+## 🛠 Stability & Code Fixes
+
+* Fixed indentation issue preventing shutdown stage
+* Eliminated draw-during-I²C-update crashes
+* Ensured all OLED writes occur **after** draw operations
+* Improved reboot/shutdown variable state handling
+* Fixed reboot text overflow
+* Centered final CRT text with proper vertical offsets
+* Cleaned stage transitions and early-release logic
+
+---
+
+# **Version 1.5 — API Cleanup, Code Organization & Commenting Overhaul**
+
+**Date:** 2025-11-15
+
+## 🔖 Summary
+
+Complete migration to a unified Pi-hole v6 stats engine.
+Removed all deprecated v5 endpoints, variables, and fallback structures.
+
+## 🔌 Network Activity LEDs
+
+* Added LEDs 2–5 for per-interface RX/TX
+* GPIO assignments:
+
+  * LED2 → eth0 RX (BCM 5)
+  * LED3 → eth0 TX (BCM 7)
+  * LED4 → wlan0 RX (BCM 10)
+  * LED5 → wlan0 TX (BCM 27)
+* Fully threaded
+* No interference with button LED
+* Independent LED pulses for each traffic direction
+
+## 🧠 Monitoring Engine
+
+* 4 threads:
+  `_net_activity_rx("eth0")`
+  `_net_activity_tx("eth0")`
+  `_net_activity_rx("wlan0")`
+  `_net_activity_tx("wlan0")`
+* Short LED pulses (20–30 ms)
+* No kernel hooks
+* Zero disk writes
+* Auto-detects absent interfaces
+
+## 🧼 API Cleanup
+
+* Removed `get_pihole_stats()` (v5 summary API)
+* Removed `ads_blocked_today`, `dns_queries_today`, `ads_percentage_today`
+* Removed legacy environment variable references
+* Standardized on `get_pihole_stats_v6()`
+* Correct v6 endpoint: `/api/stats/summary`
+
+## 🧹 Code Structure Refinement
+
+* Updated all docstrings
+* Removed old “fallback” / “legacy” comments
+* Reorganized file into clear sections:
+
+  1. Imports
+  2. Pi-hole v6 Authentication
+  3. OLED Setup
+  4. GPIO Setup
+  5. Icons
+  6. Utilities
+  7. Screens
+  8. Screensaver
+  9. Reboot/Shutdown Animation
+  10. Main Loop
 
 ---
 
 # **Version 1.4 — Pi-hole v6 API Migration & Stats Engine Overhaul**
 
-### **Date: 2025-11-15**
+**Date:** 2025-11-15
+
+## 🚀 Full Pi-hole v6 Integration
+
+* Removed all deprecated v5 endpoints
+* Added v6 session-auth login
+* SID + CSRF token extraction
+* Automatic session refresh
+
+## 🆕 Stats Retrieval
+
+* New function: `get_pihole_stats_v6()`
+* Retrieves:
+
+  * DNS queries
+  * Ads blocked
+  * Percent blocked
+  * Gravity domain count
+
+## 🐞 Bug Fixes
+
+* Fixed “all zeros” stats bug caused by missing v6 SID
+* Added robust JSON parsing
+* Added auto-recovery if Pi-hole restarts
 
 ---
 
-## 🚀 **Pi-hole v6 Compatibility**
+# **Version 1.3 — Thermometer, UI Polish, Title Rewrite, Screensaver, Reboot Animation**
 
-### **Full Migration to New API**
+**Date:** 2025-11-14
 
-* Removed all deprecated Pi-hole v5 API calls:
+## 🔥 Thermometer Enhancements
 
-  * `/admin/api.php?summaryRaw`
-  * `/admin/api.php?summary`
-  * Legacy token-based endpoints
-* Added complete Pi-hole v6.2.2 session-based authentication workflow:
+* Thickened walls (6px outer / 4px inner)
+* Rounded tops
+* Smoother scaling
+* Wave tick marks (4-column offset pattern)
 
-  * `POST /api/auth`
-  * Correct handling of returned **SID cookie**
-  * Correct extraction of **CSRF token**
-  * Automatic header injection for authenticated requests
+## 🎨 UI Layout Refinements
 
-### **Automatic Session Handling**
+* Dozens of micro-shifts for pixel-perfect alignment
+* Reworked bar lengths + spacing
+* Better text alignment on all screens
 
-* Implemented **`pihole_login()`**:
+## 🏁 Title Screen Rewrite
 
-  * Manages CSRF headers
-  * Manages SID cookies
-  * Tracks session validity window
-  * Performs automatic re-login before expiration
-  * Recovers gracefully if Pi-hole restarts
+* Loads ASCII logo from `/opt/oled/pi-hole-logo.txt`
+* Centered loading bar with rounded ends
+* Initial fade-out improvements
 
-### **New Stats Retrieval**
+## 🌙 Screensaver Upgrade
 
-Replaced all old v5 logic with `get_pihole_stats_v6()` to fetch:
+* Full vortex starfield animation
+* Trail lines
+* 80 animated particles
+* Overlay mask system (`0/1/X`)
+* Exits to System Stats screen
 
-* Total DNS queries
-* Ads blocked
-* Percent blocked
-* Gravity domain count (correct v6 field)
+## 🔁 New Reboot Animation
 
-### **Zero Stats Bug Resolved**
-
-Older versions always showed:
-
-```
-Queries: 0
-Blocked: 0
-Blocked%: 0.0
-```
-
-Root cause:
-
-* v6 endpoints returned 401 Unauthorized due to missing SID + CSRF handling.
-
-Resolved by:
-
-* Using session-based authentication
-* Using `/api/stats/summary` endpoint
-* Full error fallback handling
-
-OLED now shows **real-time, correct Pi-hole statistics**.
-
-### **Improved Error Stability**
-
-* JSON parsing resilience
-* Fallback values on fetch failures
-* No screen crashes
-* Auto-recovery if Pi-hole web service restarts
-
----
-
-# **Version 1.3 — Thermometer, UI Polish, Title Screen Rewrite, New Screensaver, New Reboot Animation**
-
-### **Date: 2025-11-14**
-
----
-
-## 🔥 **Thermometer & Gauge Enhancements**
-
-* Completely rebuilt CPU temperature thermometer:
-
-  * Thickened tube walls (6 px outer, 4 px inner)
-  * Rounded top corners
-  * Merged bulb + tube geometry
-  * Bulb overlaps tube for solid continuous look
-  * Smoother temperature scaling
-* Added **wave-style tick marks**:
-
-  * 4-column wave pattern (`X··X / ·X·X`)
-  * Offset bottom row by 1px for wave effect
-  * Crisp, non-blocky shape
-* Bar graphs improved:
-
-  * CPU/RAM/DISK labels realigned
-  * 1-px spacing between numeric values and bar
-  * Bars shortened to prevent overlap with thermometer
-  * Updated margins for perfect layout
-
----
-
-## 🎨 **General Layout Refinements**
-
-* Dozens of micro-adjustments (1px shifts) for perfect spacing
-* Consistent vertical rhythm across all three hardware bars
-* Thermometer width/height tuned to avoid pixel clipping
-* Icons and text spacing updated for OLED clarity
-
----
-
-## 🏁 **Title Screen Overhaul**
-
-* Removed old scrolling text animation
-
-* Now loads ASCII logo from:
-
-  ```
-  /opt/oled/pi-hole-logo.txt
-  ```
-
-* New bottom loading bar:
-
-  * 2px height
-  * Rounded corners (corner pixel removal)
-  * Smooth sweep animation
-  * Centered horizontally
-
-* Added micro fade-out transition
-
-* Simplified code, removed old unused font logic
-
----
-
-## 🌙 **Idle Screensaver System**
-
-* Added full idle detection (now **5 seconds** in newest code)
-* Replaced old “star bounce” with **vortex drain animation**:
-
-  * 80 stars
-  * Accelerate toward center
-  * Clockwise swirl
-  * Full screen coverage
-  * Trail-line rendering for fluid effect
-* Added overlay mask support (centered, 27×21 ASCII):
-
-  ```
-  1 = force white
-  0 = force black
-  X = transparent
-  ```
-* Screensaver exit behavior:
-
-  * Pressing button immediately returns to **System Stats**
-  * Title screen is *not* replayed
-
----
-
-## 🔄 **Reboot Animation — Full Redesign**
-
-* 5-second smooth circular sweep
-* Inner + outer border rings
-* Middle donut “fill ring”
-* Black inner/outer separators for recessed effect
-* Countdown text:
-
-  ```
-  Reboot in 5…
-  Reboot in 4…
-  Reboot in 3…
-  Reboot in 2…
-  Reboot in 1…
-  Rebooting…
-  ```
-* Ends with clean wipe + actual system reboot
+* Circular reboot sweep
+* Countdown text
+* Smooth donut-style filling
 
 ---
 
 # **Version 1.2 — Status Screen, Version Scroll, Icons, Long-Press Reboot**
 
-### **Date: 2025-11-14**
+**Date:** 2025-11-14
 
-* Added **Status Screen**:
-
-  * Uptime counter
-  * Current date/time
-  * Pi-hole versions (Core/Web/FTL)
-* Implemented **pixel-bounce scrolling** for version line
-* New icons:
-
-  * Hourglass (uptime)
-  * Analog clock
-* Improved spacing and clipping prevention
-* Updated navigation order:
-
-  ```
-  Status → System → IP Info → Domains → Pi-hole Stats
-  ```
-* Implemented **3-second long-press** reboot trigger
-* Added reboot semaphore event for safe thread control
-* Greatly improved button responsiveness and debounce accuracy
+* Added Status Screen (uptime, time, Pi-hole versions)
+* Added bounce-scrolling version line
+* Added hourglass + analog clock icons
+* Improved clipping behavior
+* Added long-press (3s) reboot
 
 ---
 
 # **Version 1.1 — Early Status Screen & Icon Improvements**
 
-### **Date: 2025-11-12**
+**Date:** 2025-11-12
 
-* Added initial uptime/time/version screen
-* Added first-generation horizontal scrolling for long text
-* Adjusted icon spacing, alignment, and readability
-* Improved timing consistency across all screens
-* Added switch behavior:
-
-  * Short press = next screen
-  * Long press = reboot (legacy version)
+* Initial uptime/time/version screen
+* Horizontal scrolling implementation
+* Better spacing + readability
+* Added early long-press reboot support
 
 ---
 
 # **Version 1.0 — Initial OLED Dashboard Release**
 
-### **Date: 2025-11-11**
+**Date:** 2025-11-11
 
-* Original title screen with Pi-hole logo
-* Added following screens:
-
-  * System Stats
-  * Pi-hole Stats (v5 API at that time)
-  * Blocklist Domains
-  * Network Info
-* Implemented SQLite gravity.db queries
-* Aligned all icons & bar graphs for SSD1306 clarity
-* Added debounced button handling
-* Added LED output tied to button state
-* Added first systemd service for auto-start
-* Established foundation for full OLED control system
+* First title screen implementation
+* Added System, Pi-hole, Domains, and IP Info screens
+* Added gravity.db SQL queries
+* Pixel-accurate SSD1306 rendering
+* Debounced button
+* LED follower
+* systemd autostart service
 
 ---
 
-# **End of Changelog**
-
----
+If you want this exported as a **release-diff**, **GitHub Release Notes**, or a **short-form version for the repo front page**, just tell me.
