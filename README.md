@@ -1,5 +1,3 @@
----
-
 # 📘 **Pi-hole Fail-Over Cluster — OLED Dashboard System**
 
 A complete Raspberry Pi OLED dashboard designed for a **dual-node Pi-hole failover cluster**.
