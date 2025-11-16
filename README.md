@@ -1,272 +1,277 @@
-# pihole-dual-cluster
-Redundant dual-Pi Pi-hole cluster with automatic sync, DNS waterfall failover, and full OLED display monitoring.
+---
 
-✅ Pi-hole v6 API login + CSRF session handling
-✅ New title screen + loading bar implementation
-✅ New system stats layout (bar changes, thermometer, wave ticks)
-✅ Improved IP screen with icons + alignment
-✅ All 32×32 icons (funnel, block list)
-✅ Fully rebuilt reboot animation
-✅ Vortex screensaver with ASCII overlay
-✅ Button + LED threaded logic
-✅ Full screen loop behavior + idle handling
-✅ Updated GPIO pin assignments (2 LEDs!)
-✅ New simplified long-press logic
-✅ New startup behavior (title → status → system …)
+# 📘 **Pi-hole Fail-Over Cluster — OLED Dashboard System**
 
-This is ready to paste directly into GitHub **as your official README**.
+A complete Raspberry Pi OLED dashboard designed for a **dual-node Pi-hole failover cluster**.
+Includes advanced animations, statistics visualization, hardware indicators, and safe reboot/shutdown control.
+
+**Current Version: v1.6 — November 2025**
+Author: **James DeRosa**
 
 ---
 
-# 📘 Pi-hole Fail-Over Cluster Project
+# 🧭 **Project Overview**
 
-### **OLED Dashboard System — Current Version (as of November 2025)**
+This repository contains the complete code and assets for an **SSD1306 128×32 OLED dashboard** used on each node of a dual-Pi Pi-hole failover setup.
 
-**Author:** James DeRosa
+Each Raspberry Pi provides:
 
----
+* Real-time Pi-hole v6 statistics
+* Real-time CPU, RAM, DISK, and temperature displays
+* Title screen with noise-disintegration fade
+* Screen rotation with button control
+* Screensaver with animated vortex
+* Safe reboot & shutdown with dual-stage hold
+* GPIO LED indicators for button and network activity
+* SSH session activity indicator
+* Clean Pi-hole v6 API authentication
 
-# 🧭 Project Overview
-
-This repository contains the **complete OLED dashboard system** used in the Pi-hole Fail-Over Cluster Project.
-
-Two Raspberry Pi 4 units (Primary + Fail-Over) each run:
-
-* **Pi-hole v6**
-* **A custom OLED dashboard**
-* **A button + LED interface**
-* **A systemd service for auto-start**
-
-The OLED dashboard (`oled_full.py`) provides:
-
-⭐ Real-time hardware and Pi-hole statistics
-⭐ Custom pixel icons and animations
-⭐ Elegant title screen
-⭐ A powerful idle screensaver
-⭐ A fully custom reboot animation
-⭐ Button-driven UI with threaded LED mirroring
-⭐ Pi-hole v6 API login + session management
-
-This README documents the **project setup**, **code behavior**, and **hardware requirements** as the code exists today.
+This is the **full production-ready OLED system** used in the failover cluster.
 
 ---
 
-# 🖥️ OLED Dashboard — Feature Summary
+# 🖥️ **OLED Dashboard: Feature Summary**
 
-## 📊 **Dashboard Screens**
+## **📊 Dashboard Screens**
 
 The dashboard rotates through the following screens:
 
-1. **Status Screen**
+### **1. Status Screen**
 
-   * Uptime (days/hours/minutes)
-   * Current date & time
-   * Pi-hole versions (Core / Web / FTL) with *bounce scrolling*
-   * Hourglass + clock icons
+* Uptime
+* Current date/time
+* Pi-hole versions (Core / Web / FTL) with pixel bounce scrolling
+* Hobbyist-style CRT terminal SSH icon (blinks when active)
 
-2. **System Stats**
+### **2. System Stats**
 
-   * CPU usage bar
-   * RAM usage bar
-   * Disk usage bar
-   * CPU temperature thermometer
-   * Wave-style temperature tick marks
-   * Timestamp
-   * Smooth bar animations with pixel-perfect edges
+* CPU usage bar
+* RAM usage bar
+* Disk usage bar
+* CPU temperature thermometer
+* Wave tick marks
+* Pixel-aligned labels and spacing
+* Timestamp
 
-3. **Network Info**
+### **3. Network Info**
 
-   * eth0 IP with Ethernet jack icon
-   * wlan0 IP with WiFi icon
-   * Hostname with device icon
-   * Icon vertical offsets for perfect alignment
+* eth0 IP with network jack icon
+* wlan0 IP with Wi-Fi icon
+* Hostname with device icon
+* All icons vertically aligned with pixel precision
 
-4. **Blocklist Domains**
+### **4. Blocklist Domains**
 
-   * Total domains
-   * Active (enabled) domains
-   * 32×32 blocklist icon
+* Total/active domain counts
+* 32×32 blocklist icon
 
-5. **Pi-hole Stats** (v6 API)
+### **5. Pi-hole Stats (v6 API)**
 
-   * Queries
-   * Ads blocked
-   * Percent blocked
-   * Gravity domain count
-   * 32×32 funnel icon
-
----
-
-# 🏁 Title Screen
-
-A clean graphical startup animation:
-
-* Loads **ASCII bitmap** from:
-
-  ```
-  /opt/oled/pi-hole-logo.txt
-  ```
-* Renders a pixel-accurate logo (25×116 forced size)
-* Bottom loading bar:
-
-  * 2 px tall
-  * 50% screen width
-  * Rounded edges (corner pixels removed)
-  * Micro-sweep animation with smooth fill
-
-After completion, the title screen fades into the dashboard.
+* DNS Queries
+* Ads Blocked
+* Percent Blocked
+* Gravity Domain Count
+* 32×32 funnel icon
 
 ---
 
-# 🌙 Idle Screensaver (Starfield Vortex)
+# 🏁 **Title Screen + Fade-Out**
 
-After **5 seconds** of inactivity:
+The startup title screen:
 
-* A particle vortex animates across the full 128×32 OLED
-* Stars spiral inward with:
+* Loads ASCII logo from
+  `/opt/oled/pi-hole-logo.txt`
+* Renders pixel-accurate graphic
+* Shows a centered loading bar with rounded ends
+* Performs a **fast random single-pixel dither fade-out**
 
-  * Acceleration near center
-  * Angular swirl
-  * Trail lines
-  * Automatic respawn
-* Runs until button is pressed
-* Returns **directly to System Stats screen**, *not* the title
-* Fully supports an ASCII overlay mask:
-
-```
-1 = force white pixel
-0 = force black pixel
-X = transparent
-```
-
-Location:
-
-```python
-SCREENSAVER_OVERLAY = [...]
-```
-
-Overlay is perfectly centered every frame.
+  * No I²C race conditions
+  * No OLED crashes
+  * Smooth digital dissolve effect
 
 ---
 
-# 🔄 Reboot Animation (5-Second Circular Sweep)
+# 🌙 **Screensaver — Starfield Vortex**
 
-Triggered via:
+After **5 seconds of inactivity**, a vortex animation plays:
 
-* **Button long-press (3 seconds)**
-* Internal `reboot_event`
+* ~80 stars
+* Accelerate into center
+* Spiral motion
+* Trail lines
+* Optional ASCII overlay mask
+* Exits instantly on button press
+* Returns to **System Statistics** (skips title screen)
 
-Animation details:
+---
 
-* Inner + outer circular borders (1-pixel crisp rings)
-* Middle “donut band” fills clockwise over 5 seconds
-* Black 1-pixel separators around fill to create a recessed effect
-* Text displays on the right:
+# 🔄 **Dual-Stage Reboot / Shutdown System (v1.6)**
+
+Powered by GPIO button on pin BCM16.
+
+### **Short Press**
+
+Cycles to next screen.
+
+### **3-Second Hold → Reboot Mode**
+
+Enters the circular reboot sweep:
 
 ```
-Reboot in 5...
-Reboot in 4...
-Reboot in 3...
-Reboot in 2...
-Reboot in 1...
 Rebooting...
+(hold for
+ power down)
 ```
 
-At the end, the Pi reboots.
+Circle fills over 5 seconds.
+
+### **Release Early**
+
+Shows inverted CRT reboot countdown:
+
+```
+Rebooting... (5)
+Rebooting... (4)
+...
+```
+
+Automatically reboots afterward.
 
 ---
 
-# 🔘 Button + LED Behavior
+### **5-Second Hold → Shutdown Mode**
 
-The dashboard uses a **threaded, software-debounced input system**.
+If the button is still held after the first circle:
 
-## Button (GPIO 16)
+* Enters **Shutdown Circle**
+* Shows text:
+  `Powering Off...`
 
-* **Short press** → Advance to next screen
-* **Long press (3s)** → Trigger reboot animation
-* Fully debounced
-* Sampled at 200 Hz
-* Zero CPU spike behavior
+### **Release During Shutdown Circle**
 
-## LEDs
+Triggers final shutdown sequence.
 
-Two LEDs mirror button state:
+### **Final CRT Shutdown Screen**
 
-| LED   | GPIO | Physical Pin |
-| ----- | ---- | ------------ |
-| LED 1 | 26   | Pin 37       |
-| LED 2 | 5    | Pin 29       |
+White background with black bold text:
 
-Thread `_led_follower()` polls switch at 100 Hz and updates LEDs instantly.
+```
+It's safe to
+turn off Pi
+```
 
-LED behavior:
-
-* **On only while button is physically pressed**
-* **Off otherwise**
-* Independent of screen animation timing
+* Classic Macintosh-style rounded corners
+* LED1 pulses slowly **3 times**
+* System runs `sync` then `halt`
+* OLED remains lit in halted safe state
 
 ---
 
-# 🛠️ Hardware Setup
+# 🔌 **GPIO LED Behavior**
 
-## Raspberry Pi Hardware
+This version uses **five** LEDs:
 
-* **2 × Raspberry Pi 4B**
-* USB-C power supplies
-* Pi-hole installed on both
-* SSD1306 OLED (128×32 I²C)
+| LED  | Purpose          | Interface | Direction     | GPIO (BCM) | Pin |
+| ---- | ---------------- | --------- | ------------- | ---------- | --- |
+| LED1 | Button indicator | —         | ON while held | 26         | 37  |
+| LED2 | Network RX       | eth0      | Receive       | 5          | 29  |
+| LED3 | Network TX       | eth0      | Transmit      | 7          | 26  |
+| LED4 | Network RX       | wlan0     | Receive       | 10         | 19  |
+| LED5 | Network TX       | wlan0     | Transmit      | 27         | 13  |
+
+### Behavior:
+
+* LED1 → mirrors button state
+* LEDs 2–5 → pulse on real RX/TX activity
+* LED threads read `/sys/class/net/.../rx_bytes` and `tx_bytes`
+* Extremely low CPU usage
+* Safe, no polling on disks
+* Automatically disables on missing interfaces
+
+---
+
+# 🖥️ **SSH Activity Indicator**
+
+A custom ASCII-art mini terminal icon appears in the **top-right corner** when an SSH session is active.
+
+Features:
+
+* 33×9 pixel CRT terminal icon
+* Blinks at 0.5-second intervals
+* Detection based on `who` (`pts/`)
+* Works instantly for SSH and SFTP
+* Zero false positives
+* Displays on **Status Screen**
+
+---
+
+# 🛠 **Pi-hole v6 API Integration**
+
+The system uses a complete Pi-hole v6 login workflow:
+
+* `POST /api/auth` session login
+* SID cookie management
+* CSRF header management
+* Auto-session refresh
+* Accesses:
+  `/api/stats/summary`
+* Fully removed Pi-hole v5 legacy code
+* Correctly parses gravity count from v6 schema
+
+No deprecated endpoints remain.
+
+---
+
+# 🧱 **Hardware Requirements**
+
+* Raspberry Pi 4B (two units recommended for cluster)
+* SSD1306 OLED 128×32 I²C
 * Momentary push button
-* 2 LEDs (button-follow behavior)
+* Five LEDs
+* Jumper wires
+* 3.3V/GND rails
 
-## I²C Wiring
+### **I²C Wiring**
 
 * SDA → Pin 3
 * SCL → Pin 5
 * 3.3V → Pin 1
 * GND → Pin 6
 
-## GPIO Wiring
+### **GPIO Assignments**
 
-| Component | GPIO | Pin | Notes                          |
-| --------- | ---- | --- | ------------------------------ |
-| Button    | 16   | 36  | Pull-up enabled, GND to Pin 34 |
-| LED 1     | 26   | 37  | Follows button                 |
-| LED 2     | 5    | 29  | Follows button                 |
-| GND       | —    | 39  | LED ground                     |
+| Component     | GPIO | Pin |
+| ------------- | ---- | --- |
+| Button        | 16   | 36  |
+| LED1 Button   | 26   | 37  |
+| LED2 eth0 RX  | 5    | 29  |
+| LED3 eth0 TX  | 7    | 26  |
+| LED4 wlan0 RX | 10   | 19  |
+| LED5 wlan0 TX | 27   | 13  |
 
 ---
 
-# 📦 Software Requirements
+# 📦 **Software Requirements**
 
-### System
+### System:
 
-```
-Raspberry Pi OS 64-bit
-Pi-hole v6 (required for API login)
-Python 3.11+
-```
+* Raspberry Pi OS 64-bit
+* Pi-hole v6
+* Python 3.11+
 
-### APT Packages
-
-```
-python3-pip
-python3-smbus
-i2c-tools
-```
-
-### Python Libraries
+### Python Libraries:
 
 ```
 adafruit-circuitpython-ssd1306
 psutil
 requests
+pillow
 netifaces
-Pillow
 ```
 
 ---
 
-# 🚀 Installation
+# 🚀 Installation Guide
 
 ## Enable I²C
 
@@ -281,7 +286,7 @@ Interface Options → I2C → Enable
 curl -sSL https://install.pi-hole.net | bash
 ```
 
-## Create Virtual Environment (Recommended)
+## Create Virtual Environment
 
 ```
 python3 -m venv ~/oled-venv
@@ -289,7 +294,7 @@ source ~/oled-venv/bin/activate
 pip install adafruit-circuitpython-ssd1306 psutil netifaces requests pillow
 ```
 
-## File Structure
+## Files & Paths
 
 ```
 /opt/oled/oled_full.py
@@ -300,9 +305,9 @@ pip install adafruit-circuitpython-ssd1306 psutil netifaces requests pillow
 
 ---
 
-# 🔧 systemd Auto-Start
+# 🔧 **Systemd Auto-Start**
 
-Create:
+Create service:
 
 ```
 /etc/systemd/system/oled-dashboard.service
@@ -335,54 +340,33 @@ sudo systemctl start oled-dashboard
 
 ---
 
-# 🔌 Pi-hole v6 API Authentication
+# ▶️ **Runtime Logic Summary**
 
-`oled_full.py` includes a fully functional login to Pi-hole v6:
-
-* Handles session (`sid`)
-* Handles CSRF token
-* Auto-refreshes validity before expiry
-* Accesses `/api/stats/summary`
-* Handles JSON conversion and error fallback
-* Automatically relogins if expired
-
-This replaces all older Pi-hole v5 API calls.
-
----
-
-# ▶️ Runtime Behavior Summary
-
-* Boot → Title Screen → Dashboard Loop
-* Button taps rotate through screens
-* After 5s idle → Screensaver
-* Exit screensaver → System screen
-* Long-press (3s) → Reboot animation → System reboot
-* LED always mirrors button
-* Threaded input ensures perfect responsiveness
+* Boot → Title Screen → Status Screen → System Stats
+* Button tap → next screen
+* 5s idle → Screensaver
+* Screensaver exit → System screen
+* 3s hold → Reboot Circle
+* 5s hold → Shutdown Circle
+* Release during Stage 2 → CRT shutdown sequence
+* LED1 pulses 3× then halt
+* OLED stays lit indefinitely (safe to remove power)
 
 ---
 
-# 🧩 Next Steps (Future Repo Additions)
+# 🧩 **Future Enhancements (Not Yet Implemented)**
 
-*(Not included yet, but to be added later when you're ready)*
-
-* Full SD-card image creation workflow
-* Cluster fail-over management
-* DNS waterfall configuration using Asus Merlin + dnsmasq
-* Sync daemon between primary and failover Pi
-* Gravity sync + version sync
-* Auto-update propagation
-* Alerts to ASUS router or external service
+* pi-hole sync daemon (primary ↔ failover)
+* DNS waterfall automation
+* Cluster heartbeat service
+* Full SD-card imaging workflow
+* Push notifications on failover events
 
 ---
 
-# 👤 Credits
+# 👤 **Credits**
 
 Developed by **James DeRosa**
-Part of the **Pi-hole Fail-Over Cluster Project**
+All OLED graphics, animations, and UI built by hand.
 
-All pixel graphics, animations, and UI elements custom built.
-* Cluster monitoring agent
-* SD-card imaging workflow
-
-I can generate all of these.
+---
